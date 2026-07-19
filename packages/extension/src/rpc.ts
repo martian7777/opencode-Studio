@@ -27,7 +27,10 @@ type Handler<M extends RpcMethod> = (
  */
 const handlers: { [M in RpcMethod]: Handler<M> } = {
   "server.status": async (client) => {
-    return unwrap(client.app.get());
+    return unwrap(client.path.get());
+  },
+  "app.agents": async (client) => {
+    return unwrap(client.app.agents());
   },
   "session.list": async (client) => {
     return unwrap(client.session.list());

@@ -51,7 +51,7 @@ export class ServerManager {
       this._client = createOpencodeClient({ baseUrl: override });
       // Verify reachability before declaring connected.
       try {
-        await this._client.app.get();
+        await this._client.app.agents();
         this.setStatus({ state: "connected", managed: false, url: override });
       } catch (err) {
         this.setStatus({

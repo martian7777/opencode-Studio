@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background, transparent);
+}
+
+/* Markdown output */
+.md p {
+  margin: 0.35rem 0;
+}
+.md pre {
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
+  padding: 0.6rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.md code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+.md :not(pre) > code {
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.15));
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+.md ul,
+.md ol {
+  margin: 0.35rem 0;
+  padding-left: 1.2rem;
+}
+.md a {
+  color: var(--vscode-textLink-foreground);
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 10px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 5px;
+}

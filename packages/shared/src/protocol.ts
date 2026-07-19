@@ -54,6 +54,7 @@ export interface RpcRequests {
   "command.list": void;
   "config.get": void;
   "config.providers": void;
+  "app.agents": void;
 }
 
 export type RpcMethod = keyof RpcRequests;
