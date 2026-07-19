@@ -5,7 +5,7 @@
 **A modern, cross-IDE GUI for [opencode](https://opencode.ai).**
 
 Chat with **image & file attachments**, **file search**, **`@`-mentions**, and
-**slash commands** — the features the terminal surface never had.
+**slash commands** the features the terminal surface never had.
 
 One web bundle, every major editor.
 
@@ -23,20 +23,20 @@ One web bundle, every major editor.
 | **Antigravity** | Open VSX / VSIX | ✅ |
 | **VSCodium** · **code-server** | Open VSX / VSIX | ✅ |
 
-All the VS Code-family editors run the **same extension** — they share the
+All the VS Code-family editors run the **same extension** they share the
 extension API, so one build covers them all.
 
 ## Features
 
-- 🖼️ **Image & file attachments** — paste, drag-and-drop, or pick. The gap that
+- 🖼️ **Image & file attachments**: paste, drag-and-drop, or pick. The gap that
   started this project.
-- 🔎 **`@`-mention file search** — fuzzy workspace search as you type.
-- ⚡ **`/` slash commands** — discover and run opencode commands from a palette.
-- 💬 **Streaming chat** — live token/tool streaming with markdown, tool cards, and
+- 🔎 **`@`-mention file search** : fuzzy workspace search as you type.
+- ⚡ **`/` slash commands**: discover and run opencode commands from a palette.
+- 💬 **Streaming chat**: live token/tool streaming with markdown, tool cards, and
   inline images.
-- 🧠 **Model & agent pickers** — switch provider/model and agent (build, plan, …).
-- 🗂️ **Sessions** — browse, resume, and start conversations.
-- ♻️ **Resilient** — transient failures retry with backoff; provider errors show a
+- 🧠 **Model & agent pickers**: switch provider/model and agent (build, plan, …).
+- 🗂️ **Sessions**: browse, resume, and start conversations.
+- ♻️ **Resilient**: transient failures retry with backoff; provider errors show a
   one-click **Retry**.
 
 ## How it works
@@ -131,9 +131,9 @@ attaches the VSIX to a GitHub Release. It requires two repo secrets:
 
 ## Packages
 
-- `packages/extension` — VS Code extension host (server lifecycle, SDK client, RPC).
-- `packages/webview` — the React GUI (chat, attachments, search, commands).
-- `packages/shared` — the RPC protocol shared by both sides.
+- `packages/extension`: VS Code extension host (server lifecycle, SDK client, RPC).
+- `packages/webview`: the React GUI (chat, attachments, search, commands).
+- `packages/shared`: the RPC protocol shared by both sides.
 
 ## License
 
