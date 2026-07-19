@@ -4,9 +4,3 @@ packages/extension/media/webview/
 *.vsix
 .DS_Store
 *.log
-
-# JetBrains / Gradle
-packages/jetbrains/.gradle/
-packages/jetbrains/build/
-packages/jetbrains/gradle/wrapper/gradle-wrapper.jar
-packages/jetbrains/src/main/resources/webview/

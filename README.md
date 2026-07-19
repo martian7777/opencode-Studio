@@ -22,11 +22,9 @@ One web bundle, every major editor.
 | **Windsurf** | Open VSX / VSIX | ✅ |
 | **Antigravity** | Open VSX / VSIX | ✅ |
 | **VSCodium** · **code-server** | Open VSX / VSIX | ✅ |
-| **JetBrains** (IntelliJ, PyCharm, WebStorm, GoLand…) | Plugin (JCEF) | 🧪 phase 2 — see [packages/jetbrains](packages/jetbrains) |
 
 All the VS Code-family editors run the **same extension** — they share the
-extension API. Because the GUI itself is a plain web bundle, JetBrains reuses it
-in a JCEF browser with only a thin native shell.
+extension API, so one build covers them all.
 
 ## Features
 
@@ -54,8 +52,7 @@ React GUI (webview)  ──postMessage RPC──►  Extension host (Node)
 
 The webview never touches the network. The host owns the `@opencode-ai/sdk`
 client and the opencode server process, and relays results + a live SSE event
-stream over a small typed RPC bridge. Adding an IDE means writing a new **host
-shell**, not a new product — see [packages/jetbrains](packages/jetbrains).
+stream over a small typed RPC bridge.
 
 ## Requirements
 
@@ -137,7 +134,6 @@ attaches the VSIX to a GitHub Release. It requires two repo secrets:
 - `packages/extension` — VS Code extension host (server lifecycle, SDK client, RPC).
 - `packages/webview` — the React GUI (chat, attachments, search, commands).
 - `packages/shared` — the RPC protocol shared by both sides.
-- `packages/jetbrains` — JetBrains plugin (JCEF host reusing the web bundle).
 
 ## License
 
