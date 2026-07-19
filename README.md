@@ -94,6 +94,23 @@ Transient failures retry with exponential backoff. Provider errors surface a one
 
 ---
 
+## 🎛️ Modes
+
+Control how much autonomy the agent has — pick from the **Mode** dropdown in the header:
+
+| Mode | Behavior |
+| :--- | :--- |
+| ✋ **Manual** | Approve every tool action before it runs (inline Allow / Always / Deny cards). |
+| ⚡ **Auto** | Auto-approve safe actions; pause and ask before risky ones (shell, external dirs, web fetch, installs). |
+| ⏩ **Bypass** | Never ask — approve everything automatically. |
+| ◔ **Plan** | Read-only: explore and plan using opencode's `plan` agent, no edits. |
+
+Built on opencode's real permission system — the server requests approval via
+`permission.updated` events, and the mode decides whether to auto-answer or surface
+an approval card.
+
+---
+
 ## 🌐 Editor Compatibility
 
 | Editor | Install Method | Status |

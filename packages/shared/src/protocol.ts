@@ -33,6 +33,7 @@ export interface RpcRequests {
   "session.list": void;
   "session.create": { title?: string; parentID?: string };
   "session.get": { id: string };
+  "session.delete": { id: string };
   "session.messages": { id: string };
   "session.prompt": {
     id: string;
@@ -48,6 +49,11 @@ export interface RpcRequests {
     model?: ModelRef;
   };
   "session.abort": { id: string };
+  "session.permission": {
+    id: string;
+    permissionID: string;
+    response: "once" | "always" | "reject";
+  };
   "find.files": { query: string };
   "find.text": { pattern: string };
   "find.symbols": { query: string };

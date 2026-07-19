@@ -24,7 +24,8 @@ Works across **VS Code, Cursor, Windsurf, Antigravity, VSCodium & code-server**.
 - 🔎 **`@`-mention file search** — fuzzy workspace search as you type
 - ⚡ **`/` slash commands** — discover and run opencode commands from a palette
 - 💬 **Streaming chat** — live token/tool streaming with markdown, tool cards, and inline images
-- 🧠 **Model & agent pickers** — switch provider/model and agent (build, plan, …)
+- 🎛️ **Modes** — Manual (approve each action), Auto (approve safe, ask for risky), Bypass (never ask), Plan (read-only)
+- 🧠 **Model picker** — switch provider/model on the fly
 - 🗂️ **Session management** — browse, resume, and start conversations
 - ♻️ **Built-in resilience** — transient retries with backoff + one-click **Retry** on provider errors
 

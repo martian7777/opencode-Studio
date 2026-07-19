@@ -6,8 +6,19 @@ import {
   type MessagePart,
   type MessageInfo,
   type MessageWithParts,
+  type Permission,
   type SessionInfo,
 } from "../lib/rpc.ts";
+
+/** Permission / execution modes, mirroring the familiar agent-mode picker. */
+export type Mode = "plan" | "manual" | "auto" | "bypass";
+
+export const MODES: { id: Mode; label: string; icon: string; description: string }[] = [
+  { id: "manual", label: "Manual", icon: "✋", description: "Approve every tool action before it runs." },
+  { id: "auto", label: "Auto", icon: "⚡", description: "Auto-approve safe actions, ask before risky ones." },
+  { id: "bypass", label: "Bypass", icon: "⏩", description: "Never ask — approve everything automatically." },
+  { id: "plan", label: "Plan", icon: "◔", description: "Read-only: explore and plan without editing." },
+];
 
 export interface AgentInfo {
   name: string;
@@ -35,6 +46,9 @@ interface State {
   error?: string;
   /** The last user parts sent, kept so a failed turn can be retried. */
   lastPrompt?: MessagePart[];
+  mode: Mode;
+  /** Permission requests awaiting the user's decision (Manual/Auto-risky). */
+  permissions: Permission[];
 }
 
 let state: State = {
@@ -43,6 +57,8 @@ let state: State = {
   busy: false,
   agents: [],
   models: [],
+  mode: "auto",
+  permissions: [],
 };
 
 const listeners = new Set<() => void>();
@@ -84,10 +100,26 @@ export async function loadSessions() {
 }
 
 export async function selectSession(id: string) {
-  set({ activeSessionId: id, messages: [] });
+  set({ activeSessionId: id, messages: [], permissions: [] });
   try {
     const messages = await api.getMessages(id);
     if (state.activeSessionId === id) set({ messages });
+  } catch (err) {
+    set({ error: errMsg(err) });
+  }
+}
+
+export async function deleteSession(id: string) {
+  // Optimistically drop it; if it was active, fall back to the newest remaining.
+  const remaining = state.sessions.filter((s) => s.id !== id);
+  const wasActive = state.activeSessionId === id;
+  set({ sessions: remaining });
+  if (wasActive) {
+    if (remaining.length > 0) await selectSession(remaining[0].id);
+    else set({ activeSessionId: undefined, messages: [], permissions: [] });
+  }
+  try {
+    await api.deleteSession(id);
   } catch (err) {
     set({ error: errMsg(err) });
   }
@@ -119,7 +151,7 @@ export async function sendPrompt(parts: MessagePart[]) {
         model: state.selectedModel
           ? { providerID: state.selectedModel.providerID, modelID: state.selectedModel.modelID }
           : undefined,
-        agent: state.selectedAgent,
+        agent: effectiveAgent(),
       }),
     );
   } catch (err) {
@@ -172,7 +204,7 @@ export async function runCommand(command: string, args: string) {
       id: sessionId,
       command,
       arguments: args,
-      agent: state.selectedAgent,
+      agent: effectiveAgent(),
       model: state.selectedModel
         ? { providerID: state.selectedModel.providerID, modelID: state.selectedModel.modelID }
         : undefined,
@@ -191,6 +223,58 @@ export async function abort() {
 
 export function setModel(model: ModelOption) {
   set({ selectedModel: model });
+}
+
+export function setMode(mode: Mode) {
+  set({ mode });
+}
+
+/** Which opencode agent to run given the current mode. */
+function effectiveAgent(): string | undefined {
+  if (state.mode === "plan") return "plan";
+  return state.selectedAgent ?? "build";
+}
+
+/** Answer a pending permission request and drop it from the queue. */
+export async function respondPermission(
+  perm: Permission,
+  response: "once" | "always" | "reject",
+) {
+  set({ permissions: state.permissions.filter((p) => p.id !== perm.id) });
+  try {
+    await api.respondPermission(perm.sessionID, perm.id, response);
+  } catch (err) {
+    set({ error: errMsg(err) });
+  }
+}
+
+/** Decide how to handle an incoming permission request for the current mode. */
+function handlePermission(perm: Permission) {
+  switch (state.mode) {
+    case "bypass":
+      void api.respondPermission(perm.sessionID, perm.id, "once");
+      return;
+    case "auto":
+      if (!isRisky(perm)) {
+        void api.respondPermission(perm.sessionID, perm.id, "once");
+        return;
+      }
+      break; // risky -> fall through to prompt
+    case "manual":
+    case "plan":
+      break; // always prompt
+  }
+  if (!state.permissions.some((p) => p.id === perm.id)) {
+    set({ permissions: [...state.permissions, perm] });
+  }
+}
+
+/** Actions that warrant a confirmation even in Auto mode. */
+function isRisky(perm: Permission): boolean {
+  const hay = [perm.type, perm.title, ...(Array.isArray(perm.pattern) ? perm.pattern : [perm.pattern ?? ""])]
+    .join(" ")
+    .toLowerCase();
+  return /bash|shell|exec|external|webfetch|fetch|network|doom|delete|\brm\b|install|sudo/.test(hay);
 }
 
 export function setAgent(agent: string | undefined) {
@@ -291,6 +375,17 @@ function handleEvent(event: OpencodeEvent) {
       if (props.sessionID === state.activeSessionId) set({ busy: false });
       break;
     }
+    case "permission.updated": {
+      // For this event the properties ARE the Permission object.
+      const perm = event.properties as unknown as Permission;
+      if (perm && perm.sessionID === state.activeSessionId) handlePermission(perm);
+      break;
+    }
+    case "permission.replied": {
+      const id = props.permissionID as string | undefined;
+      if (id) set({ permissions: state.permissions.filter((p) => p.id !== id) });
+      break;
+    }
     case "session.error": {
       set({ busy: false, error: describeError(props.error) });
       break;
@@ -298,6 +393,17 @@ function handleEvent(event: OpencodeEvent) {
     case "session.updated": {
       const info = props.info as SessionInfo | undefined;
       if (info) set({ sessions: sortSessions(mergeSession(state.sessions, info)) });
+      break;
+    }
+    case "session.deleted": {
+      const info = props.info as SessionInfo | undefined;
+      const deletedId = info?.id ?? (props.sessionID as string | undefined) ?? (props.info as { id?: string } | undefined)?.id;
+      if (deletedId) {
+        set({ sessions: state.sessions.filter((s) => s.id !== deletedId) });
+        if (state.activeSessionId === deletedId) {
+          set({ activeSessionId: undefined, messages: [], permissions: [] });
+        }
+      }
       break;
     }
     case "gui.new-session":

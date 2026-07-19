@@ -1,11 +1,11 @@
-import { useStore, newSession, setModel, setAgent } from "../state/store.ts";
+import { useStore, newSession, setModel, setMode, MODES, type Mode } from "../state/store.ts";
 import { StatusPill } from "./StatusPill.tsx";
 
 export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
   const models = useStore((s) => s.models);
-  const agents = useStore((s) => s.agents);
+  const mode = useStore((s) => s.mode);
   const selectedModel = useStore((s) => s.selectedModel);
-  const selectedAgent = useStore((s) => s.selectedAgent);
+  const activeModeIcon = MODES.find((m) => m.id === mode)?.icon ?? "⚡";
 
   return (
     <div
@@ -31,12 +31,12 @@ export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
 
       <div className="flex items-center gap-2">
         <Select
-          value={selectedAgent ?? ""}
-          onChange={(v) => setAgent(v || undefined)}
-          title="Agent"
-          icon="◆"
-          options={agents.map((a) => ({ value: a.name, label: a.name }))}
-          placeholder="agent"
+          value={mode}
+          onChange={(v) => setMode(v as Mode)}
+          title={MODES.find((m) => m.id === mode)?.description ?? "Mode"}
+          icon={activeModeIcon}
+          options={MODES.map((m) => ({ value: m.id, label: m.label }))}
+          placeholder="mode"
         />
         <Select
           value={selectedModel ? `${selectedModel.providerID}/${selectedModel.modelID}` : ""}

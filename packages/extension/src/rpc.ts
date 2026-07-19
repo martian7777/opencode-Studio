@@ -41,6 +41,9 @@ const handlers: { [M in RpcMethod]: Handler<M> } = {
   "session.get": async (client, params) => {
     return unwrap(client.session.get({ path: { id: params.id } }));
   },
+  "session.delete": async (client, params) => {
+    return unwrap(client.session.delete({ path: { id: params.id } }));
+  },
   "session.messages": async (client, params) => {
     return unwrap(client.session.messages({ path: { id: params.id } }));
   },
@@ -68,6 +71,14 @@ const handlers: { [M in RpcMethod]: Handler<M> } = {
   },
   "session.abort": async (client, params) => {
     return unwrap(client.session.abort({ path: { id: params.id } }));
+  },
+  "session.permission": async (client, params) => {
+    return unwrap(
+      client.postSessionIdPermissionsPermissionId({
+        path: { id: params.id, permissionID: params.permissionID },
+        body: { response: params.response },
+      }),
+    );
   },
   "find.files": async (client, params) => {
     return unwrap(client.find.files({ query: { query: params.query } }));

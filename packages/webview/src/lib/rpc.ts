@@ -87,10 +87,13 @@ export const api = {
   agents: () => rpc.call("app.agents") as Promise<unknown>,
   listSessions: () => rpc.call("session.list") as Promise<SessionInfo[]>,
   createSession: (title?: string) => rpc.call("session.create", { title }) as Promise<SessionInfo>,
+  deleteSession: (id: string) => rpc.call("session.delete", { id }),
   getMessages: (id: string) => rpc.call("session.messages", { id }) as Promise<MessageWithParts[]>,
   prompt: (params: RpcRequests["session.prompt"]) => rpc.call("session.prompt", params),
   command: (params: RpcRequests["session.command"]) => rpc.call("session.command", params),
   abort: (id: string) => rpc.call("session.abort", { id }),
+  respondPermission: (id: string, permissionID: string, response: "once" | "always" | "reject") =>
+    rpc.call("session.permission", { id, permissionID, response }),
   findFiles: (query: string) => rpc.call("find.files", { query }) as Promise<string[]>,
   findText: (pattern: string) => rpc.call("find.text", { pattern }) as Promise<TextMatch[]>,
   findSymbols: (query: string) => rpc.call("find.symbols", { query }) as Promise<unknown[]>,
@@ -142,4 +145,15 @@ export interface TextMatch {
   path: { text: string };
   lines: { text: string };
   line_number: number;
+}
+
+export interface Permission {
+  id: string;
+  type: string;
+  pattern?: string | string[];
+  sessionID: string;
+  messageID: string;
+  callID?: string;
+  title: string;
+  metadata?: Record<string, unknown>;
 }
