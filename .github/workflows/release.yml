@@ -1,0 +1,65 @@
+name: Release
+
+# Publish the VS Code extension when a version tag is pushed, e.g. `v0.1.0`.
+# Requires two repo secrets:
+#   VSCE_PAT  — Azure DevOps PAT with Marketplace publish scope
+#   OVSX_PAT  — Open VSX access token
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./packages/extension/package.json').version")"
+          echo "tag=$TAG package=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match extension version $PKG"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Package VSIX
+        working-directory: packages/extension
+        run: npx vsce package --no-dependencies -o opencode-gui.vsix
+
+      - name: Publish to VS Code Marketplace
+        working-directory: packages/extension
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies --packagePath opencode-gui.vsix
+
+      - name: Publish to Open VSX
+        working-directory: packages/extension
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish opencode-gui.vsix -p "$OVSX_PAT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/extension/opencode-gui.vsix
+          generate_release_notes: true

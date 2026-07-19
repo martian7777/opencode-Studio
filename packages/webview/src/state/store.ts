@@ -33,6 +33,8 @@ interface State {
   selectedModel?: ModelOption;
   selectedAgent?: string;
   error?: string;
+  /** The last user parts sent, kept so a failed turn can be retried. */
+  lastPrompt?: MessagePart[];
 }
 
 let state: State = {
@@ -101,6 +103,7 @@ export async function newSession() {
 }
 
 export async function sendPrompt(parts: MessagePart[]) {
+  set({ lastPrompt: parts });
   let sessionId = state.activeSessionId;
   if (!sessionId) {
     const session = await api.createSession();
@@ -109,19 +112,51 @@ export async function sendPrompt(parts: MessagePart[]) {
   }
   set({ busy: true, error: undefined });
   try {
-    await api.prompt({
-      id: sessionId,
-      parts: parts.map(toPartInput),
-      model: state.selectedModel
-        ? { providerID: state.selectedModel.providerID, modelID: state.selectedModel.modelID }
-        : undefined,
-      agent: state.selectedAgent,
-    });
+    await withRetry(() =>
+      api.prompt({
+        id: sessionId!,
+        parts: parts.map(toPartInput),
+        model: state.selectedModel
+          ? { providerID: state.selectedModel.providerID, modelID: state.selectedModel.modelID }
+          : undefined,
+        agent: state.selectedAgent,
+      }),
+    );
   } catch (err) {
     set({ error: errMsg(err) });
   } finally {
     set({ busy: false });
   }
+}
+
+/** Resend the last user turn — used by the "Retry" action after a failure. */
+export async function retryLast() {
+  if (state.busy || !state.lastPrompt) return;
+  await sendPrompt(state.lastPrompt);
+}
+
+/**
+ * Retry a transient failure (network blip / 5xx / rate limit) with exponential
+ * backoff. Provider errors that arrive over the event stream are surfaced with a
+ * manual Retry instead — see the error banner in the message list.
+ */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i === attempts - 1 || !isTransient(err)) break;
+      await new Promise((r) => setTimeout(r, 400 * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+
+function isTransient(err: unknown): boolean {
+  const m = errMsg(err).toLowerCase();
+  return /timeout|network|fetch failed|econn|502|503|504|rate limit|overloaded|upstream/.test(m);
 }
 
 export async function runCommand(command: string, args: string) {

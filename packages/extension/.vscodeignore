@@ -1,5 +1,6 @@
 .vscode/**
 src/**
+scripts/**
 esbuild.mjs
 tsconfig.json
 node_modules/**

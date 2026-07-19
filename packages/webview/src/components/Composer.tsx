@@ -156,8 +156,8 @@ export function Composer() {
 
   return (
     <div
-      className="relative border-t px-3 py-2"
-      style={{ borderColor: "var(--vscode-panel-border)" }}
+      className="relative border-t px-3 py-2.5"
+      style={{ borderColor: "var(--oc-border)", background: "var(--oc-surface)" }}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -166,7 +166,10 @@ export function Composer() {
       onDrop={onDrop}
     >
       {dragging && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded m-1" style={{ background: "var(--vscode-editor-background)", border: "2px dashed var(--vscode-focusBorder)" }}>
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center rounded-xl m-1.5 text-sm font-medium"
+          style={{ background: "color-mix(in srgb, var(--oc-accent) 12%, var(--vscode-editor-background))", border: "2px dashed var(--oc-accent)" }}
+        >
           Drop images or files to attach
         </div>
       )}
@@ -187,41 +190,53 @@ export function Composer() {
           onActiveChange={setActiveIndex}
           header={mode.kind === "command" ? "Commands" : mode.kind === "file" ? "Files" : undefined}
         />
-        <textarea
-          ref={textareaRef}
-          value={text}
-          rows={3}
-          placeholder={connected ? 'Ask anything…  @file  /command  (paste or drop images)' : "Waiting for opencode server…"}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          onPaste={onPaste}
-          className="w-full resize-none rounded px-2 py-1.5 outline-none scroll-thin"
-          style={{
-            background: "var(--vscode-input-background)",
-            color: "var(--vscode-input-foreground)",
-            border: "1px solid var(--vscode-input-border, var(--vscode-panel-border))",
-          }}
-        />
+        <div
+          className="rounded-xl oc-focus-ring"
+          style={{ background: "var(--vscode-input-background)", border: "1px solid var(--oc-border)" }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={text}
+            rows={3}
+            placeholder={connected ? "Ask anything…  @file  /command  (paste or drop images)" : "Waiting for opencode server…"}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            onPaste={onPaste}
+            className="w-full resize-none bg-transparent px-3 py-2.5 outline-none scroll-thin"
+            style={{ color: "var(--vscode-input-foreground)" }}
+          />
+        </div>
       </div>
 
-      <div className="flex items-center justify-between mt-1.5">
+      <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
-          <button title="Attach files" onClick={() => fileInputRef.current?.click()} className="text-sm px-2 py-1 rounded hover:opacity-80" style={{ background: "var(--vscode-toolbar-hoverBackground, transparent)" }}>
-            📎 Attach
+          <button title="Attach files" onClick={() => fileInputRef.current?.click()} className="oc-btn oc-btn-ghost text-sm">
+            <span aria-hidden>📎</span> Attach
           </button>
           <input ref={fileInputRef} type="file" multiple hidden onChange={onPickFiles} />
+          <span className="text-xs hidden sm:inline" style={{ color: "var(--vscode-descriptionForeground)" }}>
+            <Kbd>⏎</Kbd> send · <Kbd>⇧⏎</Kbd> newline
+          </span>
         </div>
         {busy ? (
-          <button onClick={() => void abort()} className="text-sm px-3 py-1 rounded" style={{ background: "var(--vscode-button-secondaryBackground)", color: "var(--vscode-button-secondaryForeground)" }}>
+          <button onClick={() => void abort()} className="oc-btn text-sm" style={{ background: "var(--oc-surface-2)", border: "1px solid var(--oc-border)" }}>
             ■ Stop
           </button>
         ) : (
-          <button onClick={() => void submit()} disabled={!connected} className="text-sm px-3 py-1 rounded disabled:opacity-50" style={{ background: "var(--vscode-button-background)", color: "var(--vscode-button-foreground)" }}>
-            Send ⏎
+          <button onClick={() => void submit()} disabled={!connected} className="oc-btn oc-btn-primary text-sm">
+            Send <span aria-hidden>⏎</span>
           </button>
         )}
       </div>
     </div>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-1 rounded font-mono" style={{ background: "var(--oc-surface-2)", border: "1px solid var(--oc-border)" }}>
+      {children}
+    </span>
   );
 }
 

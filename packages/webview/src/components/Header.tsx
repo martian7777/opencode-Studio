@@ -8,15 +8,24 @@ export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
   const selectedAgent = useStore((s) => s.selectedAgent);
 
   return (
-    <div className="flex flex-col gap-2 px-3 py-2 border-b" style={{ borderColor: "var(--vscode-panel-border)" }}>
+    <div
+      className="flex flex-col gap-2.5 px-3 py-2.5 border-b backdrop-blur-sm"
+      style={{ borderColor: "var(--oc-border)", background: "var(--oc-surface)" }}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <IconButton title="Sessions" onClick={onToggleSessions} label="☰" />
-          <span className="font-semibold tracking-wide">opencode</span>
+          <BrandMark />
         </div>
         <div className="flex items-center gap-2">
           <StatusPill />
-          <IconButton title="New session" onClick={() => void newSession()} label="＋" />
+          <button
+            title="New session"
+            onClick={() => void newSession()}
+            className="oc-btn oc-btn-ghost !px-2 !py-1 text-base leading-none"
+          >
+            ＋
+          </button>
         </div>
       </div>
 
@@ -25,6 +34,7 @@ export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
           value={selectedAgent ?? ""}
           onChange={(v) => setAgent(v || undefined)}
           title="Agent"
+          icon="◆"
           options={agents.map((a) => ({ value: a.name, label: a.name }))}
           placeholder="agent"
         />
@@ -35,6 +45,7 @@ export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
             if (m) setModel(m);
           }}
           title="Model"
+          icon="✦"
           options={models.map((m) => ({ value: `${m.providerID}/${m.modelID}`, label: m.label }))}
           placeholder="model"
         />
@@ -43,14 +54,23 @@ export function Header({ onToggleSessions }: { onToggleSessions: () => void }) {
   );
 }
 
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-1.5 select-none">
+      <span
+        className="grid place-items-center w-5 h-5 rounded-md text-[11px] font-bold"
+        style={{ background: "linear-gradient(180deg,var(--oc-accent),var(--oc-accent-2))", color: "#04140d" }}
+      >
+        &gt;_
+      </span>
+      <span className="font-semibold tracking-wide">opencode</span>
+    </div>
+  );
+}
+
 function IconButton({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
   return (
-    <button
-      title={title}
-      onClick={onClick}
-      className="w-6 h-6 flex items-center justify-center rounded hover:opacity-80"
-      style={{ background: "var(--vscode-toolbar-hoverBackground, transparent)" }}
-    >
+    <button title={title} onClick={onClick} className="oc-btn oc-btn-ghost !px-2 !py-1 leading-none">
       {label}
     </button>
   );
@@ -62,33 +82,37 @@ function Select({
   options,
   title,
   placeholder,
+  icon,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   title: string;
   placeholder: string;
+  icon: string;
 }) {
   return (
-    <select
+    <label
+      className="flex-1 min-w-0 flex items-center gap-1.5 rounded-lg px-2 py-1 oc-focus-ring"
+      style={{ background: "var(--oc-surface-2)", border: "1px solid var(--oc-border)" }}
       title={title}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex-1 min-w-0 text-xs rounded px-1.5 py-1 outline-none"
-      style={{
-        background: "var(--vscode-dropdown-background)",
-        color: "var(--vscode-dropdown-foreground)",
-        border: "1px solid var(--vscode-dropdown-border, transparent)",
-      }}
     >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
+      <span className="text-xs opacity-60">{icon}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 min-w-0 bg-transparent text-xs outline-none cursor-pointer"
+        style={{ color: "var(--vscode-foreground)" }}
+      >
+        <option value="" disabled>
+          {placeholder}
         </option>
-      ))}
-    </select>
+        {options.map((o) => (
+          <option key={o.value} value={o.value} style={{ background: "var(--vscode-dropdown-background)", color: "var(--vscode-dropdown-foreground)" }}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
