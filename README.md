@@ -60,7 +60,7 @@ stream over a small typed RPC bridge.
 
 ## Install
 
-- **VS Code / Cursor / Windsurf / Antigravity / VSCodium**: search **“opencode GUI”**
+- **VS Code / Cursor / Windsurf / Antigravity / VSCodium**: search **“opencode Studio”**
   in the Extensions view, or install the `.vsix` from the
   [Releases](https://github.com/martian7777/opencode-gui/releases) page
   (`Extensions → ⋯ → Install from VSIX`).
