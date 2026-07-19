@@ -12,6 +12,7 @@ import {
 export interface AgentInfo {
   name: string;
   description?: string;
+  mode?: string;
 }
 
 export interface ModelOption {
@@ -163,11 +164,18 @@ export function setAgent(agent: string | undefined) {
 
 export async function loadAgents() {
   try {
-    const agents = (await api.agents()) as AgentInfo[];
-    set({ agents, selectedAgent: state.selectedAgent ?? agents[0]?.name });
+    const all = (await api.agents()) as AgentInfo[];
+    // Show primary agents (build, plan, …) first — that's what users pick.
+    const agents = [...all].sort((a, b) => rank(a) - rank(b));
+    const preferred = agents.find((a) => a.name === "build") ?? agents[0];
+    set({ agents, selectedAgent: state.selectedAgent ?? preferred?.name });
   } catch {
     /* non-fatal */
   }
+}
+
+function rank(a: AgentInfo): number {
+  return a.mode === "primary" ? 0 : 1;
 }
 
 export async function loadModels() {
@@ -194,11 +202,20 @@ export async function loadModels() {
 
 // ---- event handling ---------------------------------------------------------
 
+let loadedForUrl: string | undefined;
+
+export function restartServer() {
+  loadedForUrl = undefined;
+  rpc.restartServer();
+}
+
 export function initStore() {
   rpc.onStatus((status) => {
-    const wasConnected = state.status?.state === "connected";
     set({ status });
-    if (status.state === "connected" && !wasConnected) {
+    // Load once per connected server URL (idempotent across missed edges /
+    // reconnects), instead of relying on catching the starting->connected edge.
+    if (status.state === "connected" && status.url !== loadedForUrl) {
+      loadedForUrl = status.url;
       void loadSessions();
       void loadAgents();
       void loadModels();
@@ -206,6 +223,10 @@ export function initStore() {
   });
 
   rpc.onEvent(handleEvent);
+
+  // Announce readiness so the host (re)sends the current status even if its
+  // first post landed before this webview started listening.
+  rpc.ready();
 }
 
 function handleEvent(event: OpencodeEvent) {

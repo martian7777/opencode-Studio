@@ -37,6 +37,15 @@ class RpcClient {
     });
   }
 
+  /** Tell the host we are listening; it replies with the current status. */
+  ready() {
+    this.vscode.postMessage({ kind: "webview-ready" });
+  }
+
+  restartServer() {
+    this.vscode.postMessage({ kind: "server-restart" });
+  }
+
   onEvent(fn: (e: OpencodeEvent) => void): () => void {
     this.eventListeners.add(fn);
     return () => this.eventListeners.delete(fn);

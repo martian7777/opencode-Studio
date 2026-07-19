@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type {
   HostToWebview,
-  RpcRequestMessage,
+  WebviewToHost,
   ServerStatus,
 } from "@opencode-gui/shared";
 import { ServerManager } from "./server.ts";
@@ -65,18 +65,18 @@ class WebviewHost {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
     };
-    webview.html = renderWebviewHtml(webview, extensionUri);
 
+    // Subscribe BEFORE loading HTML so the webview's "ready" handshake is never
+    // missed, and keep pushing status changes for the life of the view.
     this.disposables.push(
-      webview.onDidReceiveMessage((raw) => this.onMessage(raw as RpcRequestMessage)),
+      webview.onDidReceiveMessage((raw) => this.onMessage(raw as WebviewToHost)),
       mgr.onStatus((status) => this.postStatus(status)),
     );
 
+    webview.html = renderWebviewHtml(webview, extensionUri);
+
     // Forward opencode server events to this webview.
     this.stopEvents = forwardEvents(mgr, (event) => this.post({ kind: "event", event }));
-
-    // Send current status immediately so a late-opened view is in sync.
-    this.postStatus(mgr.status);
   }
 
   post(msg: HostToWebview) {
@@ -87,8 +87,19 @@ class WebviewHost {
     this.post({ kind: "server-status", status });
   }
 
-  private async onMessage(msg: RpcRequestMessage) {
-    if (!msg || msg.kind !== "rpc-request") return;
+  private async onMessage(msg: WebviewToHost) {
+    if (!msg) return;
+    if (msg.kind === "webview-ready") {
+      // The webview is now listening; (re)send the current status so it can
+      // never be stuck showing a stale/absent state.
+      this.postStatus(this.mgr.status);
+      return;
+    }
+    if (msg.kind === "server-restart") {
+      await this.mgr.restart();
+      return;
+    }
+    if (msg.kind !== "rpc-request") return;
     const { result, error } = await handleRpc(this.mgr, msg);
     this.post({ kind: "rpc-response", id: msg.id, result, error });
   }

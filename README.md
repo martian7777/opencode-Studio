@@ -54,3 +54,14 @@ npm run build          # builds webview -> extension/media/webview, then the hos
 - `packages/extension` — VS Code extension host (server lifecycle, SDK client, RPC).
 - `packages/webview` — the React GUI (chat, attachments, search, commands).
 - `packages/shared` — the RPC protocol shared by both sides.
+- `packages/jetbrains` — JetBrains plugin (phase 2): hosts the **same** web bundle
+  in a JCEF tool window via a JS shim, so IntelliJ/PyCharm/WebStorm/etc. get the
+  full GUI. See [packages/jetbrains/README.md](packages/jetbrains/README.md).
+
+## Cross-IDE strategy
+
+The GUI (`packages/webview`) is a plain web bundle that only assumes a VS Code
+webview host contract (`acquireVsCodeApi()` + `window.postMessage`). Each IDE host
+is a thin shell that satisfies that contract and proxies RPC to an opencode
+server — VS Code-family via the extension, JetBrains via the JCEF shim. Adding an
+IDE means writing a new host shell, not a new product.

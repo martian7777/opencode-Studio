@@ -1,7 +1,13 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import * as vscode from "vscode";
-import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk";
+import {
+  createOpencodeClient,
+  createOpencodeServer,
+  type OpencodeClient,
+} from "@opencode-ai/sdk";
 import type { ServerStatus } from "@opencode-gui/shared";
+
+const STARTUP_TIMEOUT_MS = 60_000;
 
 /**
  * Owns the opencode server lifecycle and the SDK client.
@@ -13,6 +19,7 @@ import type { ServerStatus } from "@opencode-gui/shared";
  */
 export class ServerManager {
   private proc?: ChildProcess;
+  private sdkServer?: { url: string; close(): void };
   private disposed = false;
   private restarts = 0;
   private _client?: OpencodeClient;
@@ -69,18 +76,40 @@ export class ServerManager {
   private async spawnManaged(): Promise<void> {
     this.setStatus({ state: "starting", managed: true });
     const binary = (this.config().get<string>("binaryPath") ?? "opencode").trim() || "opencode";
+    this.log(`Starting managed server: '${binary} serve' in ${this.workspaceDir}`);
 
     let url: string;
     try {
       url = await this.launch(binary);
     } catch (err) {
-      this.setStatus({ state: "error", managed: true, message: errMessage(err) });
-      return;
+      // The hand-rolled spawn can be defeated by PATH/quoting quirks in the
+      // extension host. Fall back to the SDK's own (cross-spawn) launcher.
+      this.log(`Primary launch failed: ${errMessage(err)}. Trying SDK fallback…`);
+      try {
+        url = await this.launchViaSdk();
+      } catch (err2) {
+        const message = `Could not start opencode. ${errMessage(err2)}. Is '${binary}' on your PATH? Set 'opencode.binaryPath' or 'opencode.serverUrl'.`;
+        this.log(message);
+        this.setStatus({ state: "error", managed: true, message });
+        return;
+      }
     }
 
     this._client = createOpencodeClient({ baseUrl: url });
     this.restarts = 0;
+    this.log(`Connected to ${url}`);
     this.setStatus({ state: "connected", managed: true, url });
+  }
+
+  /** SDK fallback launcher; returns the server URL and keeps a closer handle. */
+  private async launchViaSdk(): Promise<string> {
+    const server = await createOpencodeServer({
+      hostname: "127.0.0.1",
+      port: 0,
+      timeout: STARTUP_TIMEOUT_MS,
+    });
+    this.sdkServer = server;
+    return server.url;
   }
 
   /** Spawn the process and resolve once it prints its listening URL. */
@@ -98,9 +127,9 @@ export class ServerManager {
       const timeout = setTimeout(() => {
         if (settled) return;
         settled = true;
-        reject(new Error("Timed out waiting for opencode server to start (30s)."));
+        reject(new Error(`Timed out after ${STARTUP_TIMEOUT_MS / 1000}s waiting for the server to print its URL.`));
         this.kill();
-      }, 30_000);
+      }, STARTUP_TIMEOUT_MS);
 
       const scan = (chunk: Buffer) => {
         const text = chunk.toString();
@@ -189,6 +218,18 @@ export class ServerManager {
       }
       this.proc = undefined;
     }
+    if (this.sdkServer) {
+      try {
+        this.sdkServer.close();
+      } catch {
+        /* ignore */
+      }
+      this.sdkServer = undefined;
+    }
+  }
+
+  private log(message: string) {
+    this.output.appendLine(`[opencode-gui] ${message}`);
   }
 
   dispose() {

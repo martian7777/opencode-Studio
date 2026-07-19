@@ -8,7 +8,7 @@ describe("fileToPart", () => {
     expect(part.type).toBe("file");
     expect(part.mime).toBe("image/png");
     expect(part.filename).toBe("shot.png");
-    expect(part.url.startsWith("data:image/png;base64,")).toBe(true);
+    expect(part.url ?? "").toMatch(/^data:image\/png;base64,/);
   });
 
   it("guesses mime from the filename when the blob has no type", async () => {

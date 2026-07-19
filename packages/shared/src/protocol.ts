@@ -94,4 +94,10 @@ export interface OpencodeEvent {
 }
 
 export type HostToWebview = RpcResponseMessage | HostEventMessage;
-export type WebviewToHost = RpcRequestMessage;
+
+/** Non-RPC control messages the webview can send to the host. */
+export type ControlMessage =
+  | { kind: "webview-ready" }
+  | { kind: "server-restart" };
+
+export type WebviewToHost = RpcRequestMessage | ControlMessage;
