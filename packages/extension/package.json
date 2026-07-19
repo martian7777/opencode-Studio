@@ -2,7 +2,7 @@
   "name": "opencode-studio",
   "displayName": "opencode GUI",
   "description": "A rich GUI for opencode: chat with image & file attachments, file search, and slash commands — works across VS Code, Cursor, Windsurf, Antigravity, and VSCodium.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "martian7777",
   "license": "MIT",
   "icon": "media/icon.png",
