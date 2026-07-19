@@ -1,0 +1,22 @@
+{
+  "name": "opencode-gui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-IDE GUI for opencode — chat, image/file attachments, search, and commands on top of the opencode server.",
+  "workspaces": [
+    "packages/webview",
+    "packages/extension"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace packages/webview && npm run build --workspace packages/extension",
+    "build:webview": "npm run build --workspace packages/webview",
+    "build:extension": "npm run build --workspace packages/extension",
+    "dev:webview": "npm run dev --workspace packages/webview",
+    "watch": "npm run watch --workspace packages/webview & npm run watch --workspace packages/extension",
+    "package": "npm run build && npm run package --workspace packages/extension",
+    "test": "npm run test --workspace packages/webview"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
