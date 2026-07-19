@@ -30,6 +30,20 @@ export interface ModelOption {
   providerID: string;
   modelID: string;
   label: string;
+  /** Context window size (tokens) for this model, when the provider reports it. */
+  contextLimit?: number;
+}
+
+/** Derived context-window usage for the active session, mirroring opencode's CLI. */
+export interface ContextStats {
+  /** Tokens held in the current context window (from the latest assistant turn). */
+  tokens: number;
+  /** Total cost spent across the session so far, in USD. */
+  cost: number;
+  /** Context window size, when the selected model reports a limit. */
+  limit?: number;
+  /** Fraction of the window used, 0–1, when a limit is known. */
+  fraction?: number;
 }
 
 interface State {
@@ -83,6 +97,41 @@ export function useStore<T>(selector: (s: State) => T): T {
 
 export function getState(): State {
   return state;
+}
+
+interface TokenUsage {
+  input?: number;
+  output?: number;
+  reasoning?: number;
+  cache?: { read?: number; write?: number };
+}
+
+/**
+ * Compute current context-window usage: tokens from the most recent assistant
+ * turn (what will carry into the next request) and cumulative session cost.
+ *
+ * This builds a fresh object, so it must NOT be used directly as a `useStore`
+ * selector (that snapshot must be referentially stable). Call it from a
+ * `useMemo` keyed on `messages`/`selectedModel` instead — see ContextMeter.
+ */
+export function computeContext(messages: MessageWithParts[], model?: ModelOption): ContextStats {
+  let cost = 0;
+  let tokens = 0;
+  for (const m of messages) {
+    if (m.info.role !== "assistant") continue;
+    const c = (m.info as { cost?: number }).cost;
+    if (typeof c === "number") cost += c;
+    const t = (m.info as { tokens?: TokenUsage }).tokens;
+    if (t) {
+      const sum =
+        (t.input ?? 0) + (t.output ?? 0) + (t.reasoning ?? 0) + (t.cache?.read ?? 0) + (t.cache?.write ?? 0);
+      // Keep the latest non-zero turn — that's the live context size.
+      if (sum > 0) tokens = sum;
+    }
+  }
+  const limit = model?.contextLimit;
+  const fraction = limit && limit > 0 ? tokens / limit : undefined;
+  return { tokens, cost, limit, fraction };
 }
 
 // ---- actions ----------------------------------------------------------------
@@ -300,13 +349,21 @@ function rank(a: AgentInfo): number {
 export async function loadModels() {
   try {
     const providers = (await api.providers()) as {
-      providers?: Array<{ id: string; models?: Record<string, { name?: string }> }>;
+      providers?: Array<{
+        id: string;
+        models?: Record<string, { name?: string; limit?: { context?: number } }>;
+      }>;
       default?: Record<string, string>;
     };
     const models: ModelOption[] = [];
     for (const p of providers.providers ?? []) {
       for (const [modelID, m] of Object.entries(p.models ?? {})) {
-        models.push({ providerID: p.id, modelID, label: `${p.id} · ${m.name ?? modelID}` });
+        models.push({
+          providerID: p.id,
+          modelID,
+          label: `${p.id} · ${m.name ?? modelID}`,
+          contextLimit: m.limit?.context,
+        });
       }
     }
     const def = providers.default ? Object.entries(providers.default)[0] : undefined;

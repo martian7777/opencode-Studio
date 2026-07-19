@@ -3,6 +3,7 @@ import { api, type MessagePart } from "../lib/rpc.ts";
 import { fileToPart, partsFromClipboard, partsFromDrop } from "../lib/attachments.ts";
 import { sendPrompt, runCommand, abort, useStore } from "../state/store.ts";
 import { Suggestions, type Suggestion } from "./Suggestions.tsx";
+import { ContextMeter } from "./ContextMeter.tsx";
 
 type Mode = { kind: "none" } | { kind: "file"; token: string; start: number } | { kind: "command"; token: string };
 
@@ -207,6 +208,8 @@ export function Composer() {
           />
         </div>
       </div>
+
+      <ContextMeter />
 
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
