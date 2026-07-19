@@ -65,7 +65,7 @@ shell**, not a new product — see [packages/jetbrains](packages/jetbrains).
 
 - **VS Code / Cursor / Windsurf / Antigravity / VSCodium**: search **“opencode GUI”**
   in the Extensions view, or install the `.vsix` from the
-  [Releases](https://github.com/opencode-gui/opencode-gui/releases) page
+  [Releases](https://github.com/martian7777/opencode-gui/releases) page
   (`Extensions → ⋯ → Install from VSIX`).
 
 Open the **opencode** icon in the Activity Bar. The extension auto-spawns

@@ -18,5 +18,12 @@
         anchor="right"
         icon="AllIcons.Toolwindows.ToolWindowMessages"
         factoryClass="ai.opencode.gui.OpencodeToolWindowFactory" />
+
+    <applicationService serviceImplementation="ai.opencode.gui.OpencodeSettings" />
+    <applicationConfigurable
+        parentId="tools"
+        id="ai.opencode.gui.settings"
+        displayName="opencode GUI"
+        instance="ai.opencode.gui.OpencodeConfigurable" />
   </extensions>
 </idea-plugin>

@@ -45,10 +45,32 @@ in, do one of:
 The tool window is named **opencode** (right dock). It auto-spawns
 `opencode serve` for the open project.
 
+## Settings
+
+**Settings → Tools → opencode GUI** (parity with the VS Code settings):
+
+- **Server URL** — connect to an already-running server; blank auto-spawns.
+- **opencode binary path** — the executable used when auto-spawning.
+
+Changes apply next time the tool window opens.
+
+## Publish to the JetBrains Marketplace
+
+Automated by [`.github/workflows/release-jetbrains.yml`](../../.github/workflows/release-jetbrains.yml)
+on a `jb-v*` tag. It builds the shared web bundle, then signs and publishes the
+plugin. Required repo secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `JETBRAINS_MARKETPLACE_TOKEN` | Marketplace upload token |
+| `CERTIFICATE_CHAIN`, `PRIVATE_KEY`, `PRIVATE_KEY_PASSWORD` | [Plugin signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html) |
+
+The first version must be uploaded manually once (Marketplace approval); after
+that, tag pushes publish updates.
+
 ## Notes / limits
 
 - Requires an IDE build with JCEF (all recent JetBrains IDEs on the JetBrains
   Runtime). The tool window shows a message if JCEF is unavailable.
-- A server-URL override (like the VS Code `opencode.serverUrl` setting) is not yet
-  exposed in settings; it currently always auto-spawns. Add an
-  `ApplicationConfigurable` to expose it.
+- Restarting the server after changing settings currently means reopening the
+  tool window (or use the in-UI Retry, which sends a restart).

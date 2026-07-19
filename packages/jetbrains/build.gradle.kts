@@ -24,10 +24,22 @@ dependencies {
 
 intellijPlatform {
   pluginConfiguration {
+    name = "opencode GUI"
     ideaVersion {
       sinceBuild = "232"
       untilBuild = "251.*"
     }
+  }
+
+  // Signing + publishing are driven by CI secrets (see release-jetbrains.yml).
+  // All values are lazy env lookups, so local `buildPlugin` needs none of them.
+  signing {
+    certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
+    privateKey = providers.environmentVariable("PRIVATE_KEY")
+    password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
+  }
+  publishing {
+    token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
   }
 }
 

@@ -48,8 +48,11 @@ class OpencodeWebviewPanel(project: Project) : Disposable {
 
   init {
     val workingDir = project.basePath ?: System.getProperty("user.dir")
+    val settings = OpencodeSettings.getInstance()
     server = OpencodeServer(
       workingDir = workingDir,
+      binary = settings.binaryPath,
+      overrideUrl = settings.serverUrl.ifEmpty { null },
       onStatus = { status -> onServerStatus(status) },
     )
 

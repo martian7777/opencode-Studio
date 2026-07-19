@@ -31,4 +31,4 @@ Works across **VS Code, Cursor, Windsurf, Antigravity, VSCodium, and code-server
 > backend (rate limit / credits / auth / flaky endpoint), not the extension —
 > switch model or hit **Retry**.
 
-Source & docs: https://github.com/opencode-gui/opencode-gui
+Source & docs: https://github.com/martian7777/opencode-gui
