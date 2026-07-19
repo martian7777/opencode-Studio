@@ -1,0 +1,6 @@
+node_modules/
+dist/
+packages/extension/media/webview/
+*.vsix
+.DS_Store
+*.log

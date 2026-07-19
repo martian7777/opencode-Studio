@@ -4,6 +4,7 @@
   "private": true,
   "description": "Cross-IDE GUI for opencode — chat, image/file attachments, search, and commands on top of the opencode server.",
   "workspaces": [
+    "packages/shared",
     "packages/webview",
     "packages/extension"
   ],
