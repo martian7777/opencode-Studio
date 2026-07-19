@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/martian7777/opencode-gui/ci.yml?label=CI&logo=github)](https://github.com/martian7777/opencode-gui/actions)
 
-**Chat with images & files · `@`-mention search · `/` slash commands · streaming chat**
+**Chat with images & files · `@`-mention search · `/` slash commands · tool approval modes**
 **Works across VS Code, Cursor, Windsurf, Antigravity, VSCodium & code-server.**
 
 [Install](#-install) · [Features](#-features) · [Wiki](https://github.com/martian7777/opencode-gui/wiki) · [Contributing](#-contributing)
@@ -27,6 +27,7 @@
 - ❌ **No image attachments** — can't paste screenshots, drag UI mockups, or share error screenshots
 - ❌ **No file drag-and-drop** — selecting context means typing paths manually
 - ❌ **No discoverability** — commands and models are hidden behind memorized syntax
+- ❌ **No tool approval UI** — no visual way to approve, reject, or auto-approve tool actions
 - ❌ **No visual feedback** — streaming output is raw text, tool calls are invisible
 
 ## ✅ The Solution
@@ -44,13 +45,13 @@ One extension. Every VS Code-family editor. All the features the terminal never 
 <td width="50%">
 
 ### 🖼️ Image & File Attachments
-Paste from clipboard, drag-and-drop, or pick files — the #1 gap that started this project. Send screenshots, mockups, and documents directly in chat.
+Paste from clipboard (`Ctrl+V`), drag-and-drop with visual drop zone, or pick files — the #1 gap that started this project. Send screenshots, mockups, and documents directly in chat.
 
 </td>
 <td width="50%">
 
 ### 🔎 `@`-Mention File Search
-Type `@` to fuzzy-search your entire workspace. Mention any file to add it as context — no path typing required.
+Type `@` to fuzzy-search your entire workspace. Mention any file to add it as context — no path typing required. Supports text search and symbol search.
 
 </td>
 </tr>
@@ -58,56 +59,53 @@ Type `@` to fuzzy-search your entire workspace. Mention any file to add it as co
 <td>
 
 ### ⚡ `/` Slash Commands
-A discoverable palette of all opencode commands. Type `/` and instantly find what you need — no docs lookup required.
+A discoverable palette of all opencode commands. Type `/` and instantly find what you need with autocomplete — no docs lookup required.
 
 </td>
 <td>
 
-### 💬 Streaming Chat
-Live token and tool streaming with full markdown rendering, syntax-highlighted code blocks, tool-call cards, and inline images.
+### 💬 Streaming Chat with Tool Cards
+Live token streaming with full markdown + GFM rendering, syntax-highlighted code, **expandable tool-call cards** with status indicators and output, and inline image rendering.
 
 </td>
 </tr>
 <tr>
+<td>
+
+### 🛡️ Permission & Mode System
+Four execution modes — **Manual** (approve everything), **Auto** (approve safe, ask on risky), **Bypass** (approve all), and **Plan** (read-only). Risky actions like shell commands, network requests, and file deletions always prompt in Auto mode.
+
+</td>
 <td>
 
 ### 🧠 Model & Agent Pickers
-Switch between providers, models, and agents (build, plan, …) from a dropdown. No config files, no restarts.
-
-</td>
-<td>
-
-### 🗂️ Session Management
-Browse, resume, and start conversations. Your chat history is always accessible in the session sidebar.
+Switch between providers (OpenAI, Anthropic, Google, Ollama…), models, and agents (build, plan) from header dropdowns. Changes take effect on the next message — no restarts.
 
 </td>
 </tr>
 <tr>
-<td colspan="2" align="center">
+<td>
+
+### 🗂️ Session Management
+Browse, resume, delete (with confirmation), and start conversations in a slide-out sidebar. Sessions persist across editor restarts via the opencode server.
+
+</td>
+<td>
 
 ### ♻️ Built-in Resilience
-Transient failures retry with exponential backoff. Provider errors surface a one-click **Retry** — no manual re-sending.
+Transient failures retry with exponential backoff (3 attempts). Provider errors surface a one-click **Retry**. Server crashes auto-restart (up to 5 times with backoff). An **abort/stop button** cancels in-flight requests.
 
 </td>
 </tr>
 </table>
 
----
+### Additional Capabilities
 
-## 🎛️ Modes
-
-Control how much autonomy the agent has — pick from the **Mode** dropdown in the header:
-
-| Mode | Behavior |
-| :--- | :--- |
-| ✋ **Manual** | Approve every tool action before it runs (inline Allow / Always / Deny cards). |
-| ⚡ **Auto** | Auto-approve safe actions; pause and ask before risky ones (shell, external dirs, web fetch, installs). |
-| ⏩ **Bypass** | Never ask — approve everything automatically. |
-| ◔ **Plan** | Read-only: explore and plan using opencode's `plan` agent, no edits. |
-
-Built on opencode's real permission system — the server requests approval via
-`permission.updated` events, and the mode decides whether to auto-answer or surface
-an approval card.
+- 🧠 **Reasoning/thinking display** — model reasoning tokens render alongside regular output
+- 🔌 **SDK fallback launcher** — if primary server spawn fails, falls back to the SDK's cross-spawn launcher
+- 🟢 **Live connection banner** — real-time server status (starting/connected/error/stopped) with one-click restart
+- 📋 **Output channel logging** — full server logs in VS Code's Output panel (`opencode server`)
+- ⏎ **Keyboard shortcuts** — `Enter` to send, `Shift+Enter` for newline, `↑`/`↓`/`Tab` for suggestion navigation, `Escape` to dismiss
 
 ---
 
@@ -130,6 +128,7 @@ an approval card.
 ### Prerequisites
 
 - [**opencode**](https://opencode.ai) installed and on your `PATH` (or configure `opencode.binaryPath`)
+- VS Code **≥ 1.75.0** (or equivalent)
 
 ### From Marketplace
 
@@ -148,6 +147,7 @@ an approval card.
 1. Click the **opencode** icon in the Activity Bar
 2. The extension auto-spawns `opencode serve` for your workspace
 3. Start chatting — paste images, `@`-mention files, use `/` commands
+4. Choose your execution mode from the header (Manual / Auto / Bypass / Plan)
 
 ---
 
@@ -162,9 +162,11 @@ an approval card.
 │  │  (webview)   │◀─────── │   (Node.js)          │  │
 │  │              │ events  │                      │  │
 │  │ • Chat UI    │ results │ • Server lifecycle   │  │
-│  │ • Attachments│         │ • @opencode-ai/sdk   │  │
+│  │ • Attachments│ perms   │ • @opencode-ai/sdk   │  │
 │  │ • @-mentions │         │ • RPC bridge         │  │
-│  │ • /commands  │         │                      │  │
+│  │ • /commands  │         │ • SSE event stream   │  │
+│  │ • Mode picker│         │ • Permission relay   │  │
+│  │ • Tool cards │         │ • Auto-restart       │  │
 │  └──────────────┘         └──────────┬───────────┘  │
 │                                      │              │
 └──────────────────────────────────────│──────────────┘
@@ -176,7 +178,11 @@ an approval card.
                               └─────────────────┘
 ```
 
-The webview **never touches the network**. The extension host owns the SDK client and the server process, relaying results over a typed RPC bridge.
+The webview **never touches the network**. The extension host owns the SDK client and the server process, relaying results, events, and permission requests over a typed RPC bridge.
+
+### RPC Methods (18 endpoints)
+
+`server.status` · `session.list` · `session.create` · `session.get` · `session.delete` · `session.messages` · `session.prompt` · `session.command` · `session.abort` · `session.permission` · `find.files` · `find.text` · `find.symbols` · `command.list` · `config.get` · `config.providers` · `app.agents`
 
 ---
 
@@ -195,18 +201,28 @@ The webview **never touches the network**. The extension host owns the SDK clien
 | `opencode: New Session` | Start a fresh conversation |
 | `opencode: Restart Server` | Restart the managed opencode server |
 
+### Execution Modes
+
+| Mode | Icon | Behavior |
+| :--- | :---: | :--- |
+| **Manual** | ✋ | Approve every tool action before it runs |
+| **Auto** | ⚡ | Auto-approve safe actions, prompt on risky ones (shell, network, delete, install) |
+| **Bypass** | ⏩ | Approve everything automatically |
+| **Plan** | ◔ | Read-only — explore and plan without editing |
+
 ---
 
 ## 🔧 Reliability & Error Handling
 
-opencode Studio is a **single-user client** — each editor talks to its own local `opencode serve`. The classic server-scaling concerns don't apply:
-
 | Concern | How It's Handled |
 | :--- | :--- |
-| **Rate limiting** | Single in-flight request guard + exponential backoff on transient failures |
-| **Provider errors** | Clear error display with one-click **Retry** button |
-| **Server crashes** | Auto-restart of the managed server process |
-| **Connection loss** | Live connection status banner with reconnection |
+| **Transient failures** | Automatic retry with exponential backoff (400ms → 800ms → 1600ms, 3 attempts) |
+| **Provider errors** | Clear error banner with one-click **Retry** button |
+| **Server crashes** | Auto-restart with backoff (up to 5 times, 1s → 2s → 4s → 8s → 15s cap) |
+| **Connection loss** | Live connection status banner with **Restart** button |
+| **Duplicate requests** | Single in-flight request guard prevents hammering |
+| **Spawn failures** | SDK fallback launcher when primary `opencode serve` spawn fails |
+| **Request cancellation** | **■ Stop** button aborts in-flight requests via `session.abort` |
 
 > **"Error from provider … Upstream request failed"** — This comes from the model backend (rate limit, credits, auth, or a flaky endpoint), not the extension. Switch model/provider or hit **Retry**.
 
@@ -230,11 +246,11 @@ npm run build          # webview → extension/media/webview, then the host
 
 | Script | What it does |
 | :--- | :--- |
-| `npm run build` | Build both webview and extension |
+| `npm run build` | Build both webview (Vite) and extension (esbuild) |
 | `npm run build:webview` | Build only the React webview |
 | `npm run build:extension` | Build only the extension host |
-| `npm run watch` | Watch mode — rebuild on changes |
-| `npm test` | Run webview unit tests |
+| `npm run watch` | Watch mode — rebuild both on changes |
+| `npm test` | Run webview unit tests (Vitest) |
 | `npm run package` | Produce the `.vsix` for distribution |
 
 ### Project Structure
@@ -242,9 +258,19 @@ npm run build          # webview → extension/media/webview, then the host
 ```
 opencode-gui/
 ├── packages/
-│   ├── extension/     # VS Code extension host (server lifecycle, SDK, RPC)
-│   ├── webview/       # React GUI (chat, attachments, search, commands)
-│   └── shared/        # Typed RPC protocol shared by both sides
+│   ├── extension/     # VS Code extension host
+│   │   └── src/
+│   │       ├── extension.ts  # Activation, lifecycle
+│   │       ├── server.ts     # Server spawn, auto-restart, SDK fallback
+│   │       ├── rpc.ts        # 18 RPC handlers → SDK calls + SSE relay
+│   │       └── webview.ts    # Webview panel creation + CSP
+│   ├── webview/       # React GUI (Vite + Tailwind)
+│   │   └── src/
+│   │       ├── components/   # Composer, MessageList, Header, SessionSidebar,
+│   │       │                 # ConnectionBanner, StatusPill, Suggestions
+│   │       ├── lib/          # RPC client, attachments, VS Code API bridge
+│   │       └── state/        # Store (useSyncExternalStore), actions, modes
+│   └── shared/        # Typed RPC protocol (protocol.ts)
 ├── .github/workflows/ # CI + automated release pipeline
 └── package.json       # Monorepo root (npm workspaces)
 ```
@@ -258,7 +284,7 @@ Push a version tag and CI handles the rest:
 ```bash
 # 1. Bump version in packages/extension/package.json
 # 2. Commit, tag, and push
-git tag v0.1.2 && git push origin v0.1.2
+git tag v0.1.3 && git push origin v0.1.3
 ```
 
 The [release workflow](.github/workflows/release.yml) will:
@@ -294,7 +320,7 @@ Visit the **[Wiki](https://github.com/martian7777/opencode-gui/wiki)** for in-de
 - [Getting Started](https://github.com/martian7777/opencode-gui/wiki/Getting-Started) — Installation and first-run guide
 - [Features Guide](https://github.com/martian7777/opencode-gui/wiki/Features-Guide) — Deep dive into every feature
 - [Architecture](https://github.com/martian7777/opencode-gui/wiki/Architecture) — System design and data flow
-- [Configuration](https://github.com/martian7777/opencode-gui/wiki/Configuration) — All settings and commands
+- [Configuration](https://github.com/martian7777/opencode-gui/wiki/Configuration) — All settings, commands, and modes
 - [Troubleshooting](https://github.com/martian7777/opencode-gui/wiki/Troubleshooting) — Common issues and fixes
 - [Development Guide](https://github.com/martian7777/opencode-gui/wiki/Development-Guide) — Building, testing, and contributing
 - [FAQ](https://github.com/martian7777/opencode-gui/wiki/FAQ) — Frequently asked questions

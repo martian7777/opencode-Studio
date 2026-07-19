@@ -1,6 +1,6 @@
 # Configuration
 
-All settings, commands, and customization options for opencode Studio.
+All settings, commands, modes, and keyboard shortcuts.
 
 ---
 
@@ -8,8 +8,7 @@ All settings, commands, and customization options for opencode Studio.
 
 ### `opencode.serverUrl`
 
-- **Type**: `string`
-- **Default**: `""` (empty — auto-spawn)
+- **Type**: `string` · **Default**: `""` (empty — auto-spawn)
 
 Connect to an already-running opencode server. Leave empty to auto-spawn.
 
@@ -19,8 +18,7 @@ Connect to an already-running opencode server. Leave empty to auto-spawn.
 
 ### `opencode.binaryPath`
 
-- **Type**: `string`
-- **Default**: `"opencode"`
+- **Type**: `string` · **Default**: `"opencode"`
 
 Path to the opencode executable. Only used when auto-spawning.
 
@@ -36,7 +34,36 @@ Path to the opencode executable. Only used when auto-spawning.
 | :--- | :--- |
 | `opencode: Open in Editor Tab` | Open the GUI as a full editor tab |
 | `opencode: New Session` | Start a fresh conversation |
-| `opencode: Restart Server` | Restart the managed server |
+| `opencode: Restart Server` | Restart the managed server (resets crash counter) |
+
+---
+
+## Execution Modes
+
+| Mode | Icon | Behavior |
+| :--- | :---: | :--- |
+| **Manual** | ✋ | Approve every tool action before it runs |
+| **Auto** | ⚡ | Auto-approve safe actions, prompt on risky ones |
+| **Bypass** | ⏩ | Approve everything automatically |
+| **Plan** | ◔ | Read-only — forces the `plan` agent, no edits |
+
+### Risky Action Patterns (Auto mode)
+
+These patterns trigger a confirmation even in Auto mode:
+
+`bash`, `shell`, `exec`, `external`, `webfetch`, `fetch`, `network`, `doom`, `delete`, `rm`, `install`, `sudo`
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Context | Action |
+| :--- | :--- | :--- |
+| `Enter` | Input (no suggestions) | Send message |
+| `Shift+Enter` | Input | Insert newline |
+| `↑` / `↓` | Suggestions visible | Navigate suggestions |
+| `Enter` / `Tab` | Suggestions visible | Accept suggestion |
+| `Escape` | Suggestions visible | Dismiss suggestions |
 
 ---
 
@@ -47,6 +74,7 @@ Path to the opencode executable. Only used when auto-spawning.
 | `PATH` | Locates the `opencode` binary |
 | `OPENAI_API_KEY` | OpenAI provider auth |
 | `ANTHROPIC_API_KEY` | Anthropic provider auth |
+| `GOOGLE_API_KEY` | Google provider auth |
 
 ---
 

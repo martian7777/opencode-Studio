@@ -15,13 +15,14 @@ Technical architecture of opencode Studio — how the pieces fit together.
 │  │    (packages/       │  RPC    │    (packages/           │  │
 │  │     webview)        │◀──────▶│     extension)          │  │
 │  │                     │        │                          │  │
-│  │ • Chat UI           │        │ • Server lifecycle mgmt  │  │
-│  │ • Composer input    │        │ • @opencode-ai/sdk       │  │
-│  │ • Attachments       │ typed  │ • RPC request handler    │  │
-│  │ • Session sidebar   │ bridge │ • SSE event relay        │  │
-│  │ • Model/agent picks │        │ • Webview panel mgmt     │  │
-│  │ • @-mention search  │        │                          │  │
-│  │ • /command palette  │        │                          │  │
+│  │ • Chat UI           │ typed  │ • Server lifecycle mgmt  │  │
+│  │ • Composer input    │ bridge │ • @opencode-ai/sdk       │  │
+│  │ • Attachments       │        │ • 18 RPC handlers        │  │
+│  │ • Tool call cards   │ events │ • SSE event relay        │  │
+│  │ • Permission UI     │ perms  │ • Permission relay       │  │
+│  │ • Session sidebar   │        │ • Auto-restart logic     │  │
+│  │ • Mode picker       │        │ • SDK fallback launcher  │  │
+│  │ • Model/agent picks │        │ • Webview panel + CSP    │  │
 │  └────────────────────┘         └──────────┬─────────────┘  │
 │                                            │                │
 └────────────────────────────────────────────│────────────────┘
@@ -33,10 +34,9 @@ Technical architecture of opencode Studio — how the pieces fit together.
                                   │   opencode server    │
                                   │   (managed process   │
                                   │    or external)      │
-                                  └─────────────────────┘
+                                  └──────────┬──────────┘
                                              │
                                     API calls to providers
-                                             │
                                              ▼
                                   ┌─────────────────────┐
                                   │  AI Model Providers  │
@@ -49,164 +49,86 @@ Technical architecture of opencode Studio — how the pieces fit together.
 
 ## Package Structure
 
-The project is a monorepo managed with npm workspaces.
-
 ### `packages/shared` — RPC Protocol
 
 The **contract** between the webview and extension host.
 
-```
-packages/shared/
-└── src/
-    └── protocol.ts    # All type definitions for the RPC bridge
-```
-
 **Key types:**
-- `RpcRequests` — Map of method names to parameter types
+- `RpcRequests` — Map of 18 method names to parameter types
 - `RpcRequestMessage` / `RpcResponseMessage` — Typed request/response envelopes
 - `HostEventMessage` — Unsolicited events (SSE stream, server status)
 - `FilePartInput` / `TextPartInput` — Attachment types
-- `ServerStatus` — Connection state machine
-- `ControlMessage` — Non-RPC control messages (`webview-ready`, `server-restart`)
+- `ServerStatus` — Connection state machine (`starting` → `connected` → `error` → `stopped`)
+- `ControlMessage` — Non-RPC messages (`webview-ready`, `server-restart`)
 
 ### `packages/extension` — Extension Host
 
-The Node.js backend running inside the editor's extension host process.
-
-```
-packages/extension/
-└── src/
-    ├── extension.ts   # Activation entry point, lifecycle management
-    ├── server.ts      # opencode server process spawning & management
-    ├── rpc.ts         # RPC request handler (routes methods to SDK calls)
-    └── webview.ts     # Webview panel creation and HTML bootstrapping
-```
-
-**Responsibilities:**
-- **Server lifecycle** (`server.ts`): Spawn `opencode serve`, detect readiness, handle crashes, auto-restart
-- **RPC handler** (`rpc.ts`): Receive typed requests from the webview, call the `@opencode-ai/sdk`, send typed responses
-- **Event relay**: Subscribe to the opencode SSE event stream and forward events to the webview
-- **Webview management** (`webview.ts`): Create the webview panel, inject the built React app, manage CSP
+| File | Responsibility |
+| :--- | :--- |
+| `extension.ts` | Activation entry point, disposable lifecycle |
+| `server.ts` | Server spawn (primary + SDK fallback), auto-restart (5× with backoff), URL override mode |
+| `rpc.ts` | 18 RPC handlers mapping methods → SDK calls, plus SSE event forwarding with auto-reconnect |
+| `webview.ts` | Webview panel creation, HTML bootstrapping, CSP |
 
 ### `packages/webview` — React GUI
 
-The frontend UI rendered inside the VS Code webview.
-
-```
-packages/webview/
-└── src/
-    ├── main.tsx               # React entry point
-    ├── App.tsx                # Root component and layout
-    ├── index.css              # Global styles (Tailwind + custom)
-    ├── components/
-    │   ├── Composer.tsx       # Message input with attachments & @-mentions
-    │   ├── MessageList.tsx    # Chat message rendering
-    │   ├── Header.tsx         # Model/agent pickers, session controls
-    │   ├── SessionSidebar.tsx # Session list and navigation
-    │   ├── ConnectionBanner.tsx # Server status indicator
-    │   ├── StatusPill.tsx     # Connection status badge
-    │   └── Suggestions.tsx    # Quick-start suggestions
-    ├── lib/                   # Utilities (RPC client, VS Code API bridge)
-    └── state/                 # State management (React context/stores)
-```
+| File | Purpose |
+| :--- | :--- |
+| `components/Composer.tsx` | Message input with `@`-mention search, `/` command palette, attachment handling, drag-and-drop zone |
+| `components/MessageList.tsx` | Message rendering: text/reasoning (markdown), file (image/chip), tool (expandable cards), typing indicator, error banner with Retry |
+| `components/Header.tsx` | Mode picker (Manual/Auto/Bypass/Plan), model picker, agent selector, session controls, brand mark |
+| `components/SessionSidebar.tsx` | Slide-out session list with delete confirmation |
+| `components/ConnectionBanner.tsx` | Server status banner with restart button |
+| `components/StatusPill.tsx` | Compact connection status badge |
+| `components/Suggestions.tsx` | Autocomplete dropdown for `@` files and `/` commands |
+| `lib/rpc.ts` | RPC client (`RpcClient` class), typed API wrapper (17 methods), type definitions |
+| `lib/attachments.ts` | File → `MessagePart` conversion for paste, drop, and pick |
+| `lib/vscode.ts` | VS Code webview API bridge |
+| `state/store.ts` | Global state (useSyncExternalStore), 4 modes, permission handling, retry logic, event processing |
 
 ---
 
-## Data Flow
-
-### Sending a Message
-
-```
-User types message + attaches image
-         │
-         ▼
-┌─ Composer.tsx ───────────────────────────────┐
-│ 1. Build PartInput[] (text + FilePartInput)  │
-│ 2. Send RPC: session.prompt                  │
-└──────────────────────┬───────────────────────┘
-                       │ postMessage
-                       ▼
-┌─ rpc.ts (Extension Host) ────────────────────┐
-│ 3. Receive RpcRequestMessage                 │
-│ 4. Call sdk.session.prompt(id, parts)        │
-│ 5. Send RpcResponseMessage back              │
-└──────────────────────┬───────────────────────┘
-                       │ HTTP POST
-                       ▼
-┌─ opencode server ────────────────────────────┐
-│ 6. Forward prompt to AI provider             │
-│ 7. Stream response via SSE                   │
-└──────────────────────┬───────────────────────┘
-                       │ SSE events
-                       ▼
-┌─ server.ts (Extension Host) ─────────────────┐
-│ 8. Receive SSE events                        │
-│ 9. Forward as HostEventMessage to webview    │
-└──────────────────────┬───────────────────────┘
-                       │ postMessage
-                       ▼
-┌─ MessageList.tsx ────────────────────────────┐
-│ 10. Render streaming tokens, tool cards      │
-│ 11. Update UI in real-time                   │
-└──────────────────────────────────────────────┘
-```
-
-### Server Lifecycle
-
-```
-Extension activates
-       │
-       ▼
-   Is opencode.serverUrl set?
-       │
-   ┌───┴───┐
-   │ Yes   │ No
-   │       │
-   ▼       ▼
-Connect  Spawn `opencode serve`
-to URL       │
-   │         ├─ Find free port
-   │         ├─ Start child process
-   │         ├─ Poll for readiness
-   │         └─ Connect when ready
-   │              │
-   └──────┬───────┘
-          │
-          ▼
-   Subscribe to SSE events
-   Relay to webview
-          │
-          ▼
-   Ready for user interaction
-```
-
----
-
-## RPC Protocol
-
-All communication between the webview and extension host uses a typed RPC protocol over `postMessage`.
+## RPC Protocol (18 Methods)
 
 ### Request Methods
 
 | Method | Parameters | Purpose |
 | :--- | :--- | :--- |
-| `server.status` | `void` | Get current server connection state |
-| `session.list` | `void` | List all sessions |
+| `server.status` | — | Get server connection state |
+| `session.list` | — | List all sessions |
 | `session.create` | `{ title?, parentID? }` | Create a new session |
 | `session.get` | `{ id }` | Get session details |
+| `session.delete` | `{ id }` | Delete a session |
 | `session.messages` | `{ id }` | Get messages for a session |
 | `session.prompt` | `{ id, parts[], model?, agent? }` | Send a prompt with attachments |
-| `session.command` | `{ id, command, arguments?, agent?, model? }` | Run a slash command |
-| `session.abort` | `{ id }` | Cancel an in-flight request |
+| `session.command` | `{ id, command, args?, agent?, model? }` | Run a slash command |
+| `session.abort` | `{ id }` | Cancel in-flight request |
+| `session.permission` | `{ id, permissionID, response }` | Respond to permission request |
 | `find.files` | `{ query }` | Fuzzy file search |
-| `find.text` | `{ pattern }` | Text search in workspace |
+| `find.text` | `{ pattern }` | Text search (grep) |
 | `find.symbols` | `{ query }` | Symbol search |
-| `command.list` | `void` | List available slash commands |
-| `config.get` | `void` | Get opencode configuration |
-| `config.providers` | `void` | List configured model providers |
-| `app.agents` | `void` | List available agents |
+| `command.list` | — | List available slash commands |
+| `config.get` | — | Get opencode configuration |
+| `config.providers` | — | List configured model providers |
+| `app.agents` | — | List available agents |
 
-### Message Types
+### Event Types
+
+| Event | When |
+| :--- | :--- |
+| `message.updated` | A message is created or metadata changes |
+| `message.part.updated` | A message part streams in or changes |
+| `message.part.removed` | A part is removed |
+| `message.removed` | A message is deleted |
+| `session.idle` | Agent finishes processing |
+| `session.error` | Provider or session error occurs |
+| `session.updated` | Session title/metadata changes |
+| `session.deleted` | Session is deleted externally |
+| `permission.updated` | Tool requests approval |
+| `permission.replied` | Permission was answered |
+| `gui.new-session` | External trigger to create a new session |
+
+### Message Flow
 
 ```
 Webview → Host:
@@ -216,29 +138,39 @@ Webview → Host:
 
 Host → Webview:
   ├── RpcResponseMessage  { kind: "rpc-response", id, result?, error? }
-  ├── { kind: "event", event }       (SSE event passthrough)
+  ├── { kind: "event", event }        (SSE passthrough)
   └── { kind: "server-status", status }
 ```
 
 ---
 
-## Build Pipeline
+## Server Lifecycle
 
 ```
-packages/webview (Vite)          packages/extension (esbuild)
-       │                                │
-   npm run build:webview           npm run build:extension
-       │                                │
-       ▼                                ▼
-   dist/ → copied to              dist/extension.js
-   extension/media/webview/       (bundled Node.js module)
-       │                                │
-       └────────────┬───────────────────┘
-                    │
-                npm run package
-                    │
-                    ▼
-            opencode-gui.vsix
+Extension activates
+       │
+       ▼
+   Is opencode.serverUrl set?
+       │
+   ┌───┴───┐
+   │ Yes   │ No
+   ▼       ▼
+Connect  Try primary spawn: `opencode serve --hostname=127.0.0.1 --port=0`
+to URL       │
+   │     ┌───┴───┐
+   │     │ OK    │ Fail
+   │     │       ▼
+   │     │   SDK fallback: createOpencodeServer()
+   │     │       │
+   │     └───┬───┘
+   │         │
+   └────┬────┘
+        ▼
+   Subscribe to SSE events (auto-reconnect loop)
+   Relay events to webview
+        │
+        ▼
+   Ready — on crash, auto-restart (up to 5×)
 ```
 
 ---
@@ -246,6 +178,7 @@ packages/webview (Vite)          packages/extension (esbuild)
 ## Security Model
 
 - The webview runs in a sandboxed iframe with a strict **Content Security Policy**
-- The webview **never makes network requests** — all communication goes through `postMessage` to the extension host
+- The webview **never makes network requests** — all communication goes through `postMessage`
 - File access is mediated by the extension host using the VS Code API
-- The opencode server runs on `localhost` only
+- The opencode server binds to `127.0.0.1` only (localhost)
+- The SDK client uses the `heyapi` request pattern with error unwrapping
